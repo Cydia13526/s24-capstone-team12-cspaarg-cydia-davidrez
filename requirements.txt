@@ -20,3 +20,9 @@ huggingface_hub
 cryptography
 gensim
 xgboost
+streamlit
+plotly
+statsmodels
+fredapi
+python-dotenv
+bokeh

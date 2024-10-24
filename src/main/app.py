@@ -1,10 +1,11 @@
+import os
 import streamlit as st
 import sqlite3
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
-from pipeline import add_engineered_features, load_data, find_best_chain
+from pipeline import add_engineered_features, load_data, find_best_chain, start_pipeline
 from forecaster import Forecaster
 import pickle
 import warnings
@@ -49,7 +50,8 @@ def add_recession_highlights(fig):
 
 # Function to load historical data for multiple variables
 def load_historical_data(variables):
-    conn = sqlite3.connect('data/historical_macro.db')
+    db_path = os.path.join(os.getcwd(), "src/resources/data/mongo_db/historical_macro.db")
+    conn = sqlite3.connect(db_path)
     if variables:
         query = f"SELECT date, {', '.join(variables)} FROM historical_macro"
     else:
@@ -64,7 +66,8 @@ def load_historical_data(variables):
     return df
 
 def load_prediction_data(variable):
-    conn = sqlite3.connect('data/predictions_macro.db')
+    db_path = os.path.join(os.getcwd(), "src/resources/data/mongo_db/predictions_macro.db")
+    conn = sqlite3.connect(db_path)
     query = f"SELECT date, {variable}_prediction FROM predictions_macro"
     try:
         df = pd.read_sql_query(query, conn, parse_dates=['date'])
@@ -138,7 +141,7 @@ def load_models(variables):
     models = {}
     for variable in variables:
         try:
-            with open(f"models/best_model_{variable}.pkl", 'rb') as file:
+            with open(f"src/resources/models/best_model_{variable}.pkl", 'rb') as file:
                 models[variable] = pickle.load(file)
         except FileNotFoundError:
             st.warning(f"Model for {variable} not found.")
@@ -178,7 +181,8 @@ def forecast_macro_variables(fedfunds_forecast, original_data, differenced_data,
 
 # Function to store forecasts in the database
 def store_forecasts(forecasts, original_data):
-    conn = sqlite3.connect('data/forecast_macro.db')
+    db_path = os.path.join(os.getcwd(), "src/resources/data/mongo_db/forecast_macro.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     # Get the last date from the original data
@@ -241,7 +245,7 @@ def plot_forecasts(historical_data, forecasts):
     
     return fig
 
-def historical_data_comparison(all_variables):
+def historical_data_comparison(all_variables): ###
     st.header("Historical Data Comparison")
     all_descriptions = get_all_variable_descriptions()
     selected_descriptions = st.multiselect("Select macroeconomic variables to compare", all_descriptions, key="historical_multiselect")
@@ -256,7 +260,8 @@ def historical_data_comparison(all_variables):
 
 def load_feature_importances():
     try:
-        with open('models/feature_importances.json', 'r') as f:
+        file_path = os.path.join(os.getcwd(), "src/resources/models/feature_importances.json")
+        with open(file_path, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
         st.warning("Feature importances file not found.")
@@ -273,7 +278,7 @@ def plot_feature_importances(variable_description, importances):
     fig.update_layout(height=400, width=600)
     return fig
 
-def historical_vs_predictions(all_variables):
+def historical_vs_predictions(all_variables): ###
     st.header("Historical Data vs Predictions")
     all_descriptions = get_all_variable_descriptions()
     selected_description = st.selectbox("Select a macroeconomic variable", all_descriptions, key="prediction_selectbox")
@@ -385,7 +390,7 @@ def plot_fedfunds_forecast(forecast, start_date, current_month):
     
     return fig
 
-def user_forecast(original_data, best_chain, models):
+def user_forecast(original_data, best_chain, models): ####
     st.header("User-Defined Federal Funds Rate Forecast")
     
     # Use session state to persist values
@@ -431,18 +436,13 @@ def user_forecast(original_data, best_chain, models):
         fedfunds_forecast_series = pd.Series(fedfunds_forecast[1:], index=pd.date_range(start=start_date, periods=st.session_state.forecast_months, freq='MS'))
         
         print(f"fedfunds_forecast_series: {fedfunds_forecast_series}")
-        
-        # Create Forecaster instance
         forecaster = Forecaster(models, original_data, original_data, fedfunds_forecast_series, best_chain, 'FEDFUNDS')
-        
-        # Generate forecasts for other variables
-        st.session_state.forecasts = forecaster.forecast(models, original_data, 'FEDFUNDS', 'data/', 'models/')
+        st.session_state.forecasts = forecaster.forecast(models, original_data, 'FEDFUNDS', 'src/resources/data/mongo_db/', 'models/')
         
         print("Forecasts generated:")
         for var, forecast in st.session_state.forecasts.items():
             print(f"{var}: {forecast}")
 
-        # Store forecasts in the database
         store_forecasts(st.session_state.forecasts, original_data)
     
     if st.session_state.forecasts is not None:
@@ -456,46 +456,37 @@ def user_forecast(original_data, best_chain, models):
 def generate_forecasts(original_data, best_chain, models, forecast_months, fedfunds_forecast):
     forecast_dates = pd.date_range(start=original_data.index[-1] + pd.DateOffset(months=1), periods=forecast_months, freq='MS')
     fedfunds_forecast_series = pd.Series(fedfunds_forecast, index=forecast_dates)
-    
-    # Create Forecaster instance
+
     forecaster = Forecaster(models, original_data, fedfunds_forecast_series, best_chain, 'FEDFUNDS')
-    
-    # Generate forecasts for other variables
     forecasts = forecaster.forecast(models, original_data, 'FEDFUNDS', 'data/', 'models/')
-    
-    # Store forecasts in the database
     store_forecasts(forecasts, original_data)
-    
     return forecasts
 
 # Main Streamlit app
 def main():
     try:
-        st.title("Macroeconomic Data and Predictions Dashboard")
+        print("------- Project Set Up Pipeline Started -------")
+        # file_path = os.path.join(os.getcwd(), "src/resources/models/feature_importances.json")
+        # if os.path.exists(file_path) == False:
+        #     original_data, best_chain = start_pipeline()
+        #
 
-        # Load data and models
-        original_data, differenced_data = load_data('data/processed/preprocessed_economic_data.csv')
-        
+
+        print("------- Streamlit App Started -------")
+        st.title("Macroeconomic Data and Predictions Dashboard")
+        original_data, differenced_data = load_data('src/resources/data/processed/preprocessed_economic_data.csv')
+
         # Get the best chain from the pipeline
         initial_chain = ['FEDFUNDS']
         best_chain = find_best_chain(initial_chain, differenced_data)
-        
-        models = load_models(best_chain[1:])  # Exclude FEDFUNDS as it's user input
-        # Get all available variables
+        models = load_models(best_chain[1:])
         all_variables = list(get_all_variable_descriptions())
 
-        # Create tabs
         tab1, tab2, tab3 = st.tabs(["Historical Data Comparison", "Historical vs Predictions", "User Forecast"])
-
-        # Tab 1: Historical Data Comparison
         with tab1:
             historical_data_comparison(all_variables)
-
-        # Tab 2: Historical vs Predictions
         with tab2:
             historical_vs_predictions(all_variables)
-
-        # Tab 3: User Forecast
         with tab3:
             user_forecast(original_data, best_chain, models)
 

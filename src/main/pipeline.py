@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
@@ -6,7 +8,7 @@ import pickle
 from typing import List
 from sklearn.metrics import mean_absolute_error
 import sqlite3
-from database_setup import create_historical_database, create_predictions_database
+from database_setup import create_historical_database, create_forecast_database, create_predictions_database
 import warnings
 warnings.filterwarnings("ignore")
 from datetime import datetime
@@ -88,10 +90,6 @@ def find_best_chain(predictive_chain: List[str], data: pd.DataFrame, max_vars: i
     print("Model results:\n", results_df)
 
     return predictive_chain
-            
-                
-
-
 
 def add_engineered_features(diff_df: pd.DataFrame, orig_df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -196,11 +194,8 @@ def add_engineered_features(diff_df: pd.DataFrame, orig_df: pd.DataFrame) -> pd.
     # For lag features, initial NaNs are expected; decide whether to fill or drop
     # Here, we'll drop rows with NaNs resulting from lagging
     diff_df.dropna(inplace=True)
-
     return diff_df
     
-
-
 
 def train_model(best_chain, original_data):
     feature_importances = {}
@@ -263,7 +258,8 @@ def train_model(best_chain, original_data):
         # Insert predictions for this variable into the database
         insert_predictions(variable, real_predictions)
 
-        model_filename = f"models/best_model_{variable}.pkl"
+        os.makedirs(os.path.join(os.getcwd(), "src/resources/models"))
+        model_filename = f"src/resources/models/best_model_{variable}.pkl"
         with open(model_filename, 'wb') as file:
             pickle.dump(model, file)
         print(f"Model saved as {model_filename}")
@@ -284,13 +280,13 @@ def train_model(best_chain, original_data):
         # print(feature_importances[variable])
 
     # Save feature importances to a JSON file
-    with open('models/feature_importances.json', 'w') as f:
+    with open('resources/models/feature_importances.json', 'w') as f:
         json.dump(feature_importances, f, indent=4)
 
     return
 
 def insert_predictions(variable, predictions):  
-    conn = sqlite3.connect('data/predictions_macro.db')
+    conn = sqlite3.connect(os.path.join(os.getcwd(), "src/resources/data/mongo_db/predictions_macro.db"))
     cursor = conn.cursor()
 
     # Ensure the column exists
@@ -317,7 +313,7 @@ def insert_historical_data_to_db(data: pd.DataFrame):
     create_historical_database()
 
     # Connect to the database
-    conn = sqlite3.connect('data/historical_macro.db')
+    conn = sqlite3.connect(os.path.join(os.getcwd(), "src/resources/data/mongo_db/historical_macro.db"))
     cursor = conn.cursor()
 
     # Create table if it doesn't exist
@@ -351,26 +347,34 @@ def insert_historical_data_to_db(data: pd.DataFrame):
     conn.close()
     print("Historical data inserted into the database.")
 
-if __name__ == '__main__':
-    # Create databases
+def db_set_up():
     create_historical_database()
+    create_forecast_database()
     create_predictions_database()
 
-    original_data, differenced_data = load_data('data/processed/preprocessed_economic_data.csv')
-    
-    # Ensure the index is set to datetime
+def start_pipeline():
+    print("------- Step Up Pipeline - Step 1: Database Set Up -------")
+    db_set_up()
+
+    print("------- Step Up Pipeline - Step 2: Insert Preprocessed Data into Database -------")
+    original_data, differenced_data = load_data(os.path.join(os.getcwd(), "src/resources/data/processed/preprocessed_economic_data.csv"))
     original_data.index = pd.to_datetime(original_data.index)
-    
-    # Insert historical data into the database
     insert_historical_data_to_db(original_data)
 
+    print("------- Step Up Pipeline - Step 3: Find Best Chain -------")
     initial_chain = ['FEDFUNDS']
     best_chain = find_best_chain(initial_chain, differenced_data)
-
     print("Best chain:", best_chain)
-    # print("Original data head:")
-    # print(original_data[best_chain].head())
 
+    print("------- Step Up Pipeline - Step 4: Start Training the Model -------")
     train_model(best_chain, original_data)
+
+    return original_data, best_chain
+
+
+if __name__ == '__main__':
+    start_pipeline()
+
+
 
 

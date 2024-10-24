@@ -1,9 +1,8 @@
 import pandas as pd
-import numpy as np
 from fredapi import fred
-import os
 from dotenv import load_dotenv
 from datetime import datetime as dt
+from common_util import get_fred_api_key
 
 load_dotenv()
 
@@ -38,9 +37,11 @@ def get_variable_description(variable_code):
 def get_all_variable_descriptions():
     return list(variable_descriptions.values())
 
+
+
 class FREDDataLoader:
     def __init__(self):
-        self.fred = fred.Fred(api_key=os.getenv('FRED_API_KEY'))
+        self.fred = fred.Fred(api_key=get_fred_api_key())
         self.variables = [
                 "MORTGAGE30US", # 30-Year mortgage rate
                 "HOUST",        # New Privately-Owned Housing Units Started
@@ -87,7 +88,7 @@ class FREDDataLoader:
 
 
     def save_data(self, df, filename='preprocessed_economic_data.csv'):
-        df.to_csv(f'data/processed/{filename}', index=True)
+        df.to_csv(f'../data/processed/{filename}', index=True)
         print(f'Data saved to data/processed/{filename}')
 
     def get_recession_dates(self):
