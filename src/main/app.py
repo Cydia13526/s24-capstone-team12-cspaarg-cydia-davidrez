@@ -466,19 +466,18 @@ def generate_forecasts(original_data, best_chain, models, forecast_months, fedfu
 def main():
     try:
         print("------- Project Set Up Pipeline Started -------")
-        # file_path = os.path.join(os.getcwd(), "src/resources/models/feature_importances.json")
-        # if os.path.exists(file_path) == False:
-        #     original_data, best_chain = start_pipeline()
-        #
+        file_path = os.path.join(os.getcwd(), "src/resources/models/feature_importances.json")
+        if os.path.exists(file_path) == False:
+            original_data, best_chain = start_pipeline()
+        else:
+            original_data, differenced_data = load_data('src/resources/data/processed/preprocessed_economic_data.csv')
 
+            initial_chain = ['FEDFUNDS']
+            best_chain = find_best_chain(initial_chain, differenced_data)
 
         print("------- Streamlit App Started -------")
         st.title("Macroeconomic Data and Predictions Dashboard")
-        original_data, differenced_data = load_data('src/resources/data/processed/preprocessed_economic_data.csv')
 
-        # Get the best chain from the pipeline
-        initial_chain = ['FEDFUNDS']
-        best_chain = find_best_chain(initial_chain, differenced_data)
         models = load_models(best_chain[1:])
         all_variables = list(get_all_variable_descriptions())
 
