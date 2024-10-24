@@ -1,2 +1,50 @@
-.idea/*
-.ipynb_checkpoints/*
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+env/
+.venv/
+.env/
+
+# Environment variables
+*.env
+
+# Byte-compiled and package files
+*.egg-info/
+*.egg
+*.whl
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# Streamlit config and cache
+.streamlit/
+
+# Python distribution/build files
+build/
+dist/
+*.spec
+
+# Pytest cache
+.pytest_cache/
+
+# Database files (if any)
+*.sqlite3
+
+# Ignore all files in data/ folder except for README.md
+data/*
+!data/README.md
