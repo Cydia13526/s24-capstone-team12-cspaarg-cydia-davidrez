@@ -11,9 +11,6 @@ import pickle
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
 from datetime import datetime, timedelta
-from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, CustomJS, HoverTool
-from streamlit_bokeh_events import streamlit_bokeh_events
 import json
 import plotly.express as px
 from data_load import get_variable_description, get_all_variable_descriptions, variable_descriptions
