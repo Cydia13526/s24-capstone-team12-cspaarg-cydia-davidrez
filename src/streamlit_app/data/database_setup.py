@@ -1,7 +1,7 @@
 import sqlite3
 import os, sys
-from data_load import FREDDataLoader
 sys.path.append(os.path.join(os.getcwd(), "src"))
+from streamlit_app.data.fred_data_loader import FREDDataLoader
 
 def delete_database(db_name):
     if os.path.exists(f'resources/data/mongo_db/{db_name}.db'):

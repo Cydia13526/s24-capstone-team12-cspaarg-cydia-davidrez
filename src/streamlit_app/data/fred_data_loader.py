@@ -1,8 +1,10 @@
+import sys, os
 import pandas as pd
 from fredapi import fred
 from dotenv import load_dotenv
 from datetime import datetime as dt
-from common_util import get_fred_api_key
+sys.path.append(os.path.join(os.getcwd(), 'src'))
+from streamlit_app.utils.common_util import get_fred_api_key
 
 load_dotenv()
 
@@ -37,8 +39,6 @@ def get_variable_description(variable_code):
 def get_all_variable_descriptions():
     return list(variable_descriptions.values())
 
-
-
 class FREDDataLoader:
     def __init__(self):
         self.fred = fred.Fred(api_key=get_fred_api_key())
@@ -49,7 +49,7 @@ class FREDDataLoader:
                 "UNRATE",       # Unemployment Rate
                 "CPIAUCSL",     # Consumer Price Index for All Urban Consumers: All Items
                 "FEDFUNDS",     # Federal Funds Rate
-                "DGS10",        # 10-Year Treasury Constant Maturity Rate
+                "DGS10",        # 10-Year Treasury Constant Maturity Rateload_historical_data
                 "DSPIC96",      # Real Disposable Personal Income
                 "PSAVERT",      # Personal Saving Rate
                 "UMCSENT",      # University of Michigan: Consumer Sentiment
@@ -64,7 +64,6 @@ class FREDDataLoader:
                 "DGS2",         # 2-Year Treasury Constant Maturity Rate
                 "T10Y2Y"        # 10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity
             ]
-        
 
     def load_data(self, start_date='1954-07-01', end_date=dt.today().strftime('%Y-%m-%d')):
         data = {}
@@ -80,12 +79,8 @@ class FREDDataLoader:
         preprocessed_df.fillna(method='ffill', inplace=True)
         preprocessed_df.fillna(method='bfill', inplace=True)
         preprocessed_df.index.names = ['date']
-
         preprocessed_df = preprocessed_df.resample('MS').first()
-
         return preprocessed_df
-
-
 
     def save_data(self, df, filename='preprocessed_economic_data.csv'):
         df.to_csv(f'../data/processed/{filename}', index=True)
@@ -93,11 +88,9 @@ class FREDDataLoader:
 
     def get_recession_dates(self):
         return self.recession_dates
-    
 
 if __name__ == '__main__':
     loader = FREDDataLoader()
     df = loader.load_data()
     preprocessed_df = loader.preprocess_data(df)
     loader.save_data(preprocessed_df)
-

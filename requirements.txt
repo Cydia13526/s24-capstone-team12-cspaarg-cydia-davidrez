@@ -20,8 +20,9 @@ huggingface_hub
 cryptography
 gensim
 xgboost
+sklearn
 streamlit
 plotly
-statsmodels
 fredapi
 python-dotenv
+statsmodels

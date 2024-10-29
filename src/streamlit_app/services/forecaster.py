@@ -1,11 +1,7 @@
-from typing import List
 import pandas as pd
 import numpy as np
-import joblib
 import sqlite3
 import warnings
-
-from scipy.fftpack import diff
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
 
 class Forecaster:
