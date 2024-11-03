@@ -16,10 +16,14 @@ def prepare_data(original_data, best_chain, variable):
     X_diff = X.diff().dropna()
     y_diff = y.diff().dropna()
 
+    if 'FEDFUNDS' not in X_diff.columns:
+        raise ValueError("FEDFUNDS column not found in diff_df")
+
     first_fed_funds = original_data['FEDFUNDS'].iloc[0] if 'FEDFUNDS' in original_data.columns else 0
     X_diff['FEDFUNDS_Actual'] = X_diff['FEDFUNDS'].cumsum() + first_fed_funds
+
     X_diff = Forecaster.add_engineered_features(X_diff)
-    y_diff = y_diff.loc[X_diff.index]  # Align y_diff index with X_diff
+    y_diff = y_diff.loc[X_diff.index]
 
     train_size = int(len(X_diff) * 0.8)
     X_train, X_test = X_diff[:train_size], X_diff[train_size:]
