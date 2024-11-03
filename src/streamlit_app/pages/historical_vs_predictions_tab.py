@@ -8,11 +8,11 @@ sys.path.append(os.path.join(os.getcwd(), 'src'))
 from streamlit_app.data.mongo_data_loader import MongoDataLoader
 from streamlit_app.utils.common_util import add_recession_highlights
 from streamlit_app.data.fred_data_loader import get_all_variable_descriptions, variable_descriptions, get_variable_description
+from streamlit_app.configs.logger_config import logger
 
 def plot_historical_and_prediction(historical_df, prediction_df, variable, variable_description):
     fig = go.Figure()
 
-    # Plot historical data
     fig.add_trace(go.Scatter(
         x=historical_df.index,
         y=historical_df[variable],
@@ -20,7 +20,6 @@ def plot_historical_and_prediction(historical_df, prediction_df, variable, varia
         name="Historical"
     ))
 
-    # Plot prediction data if available
     if not prediction_df.empty:
         fig.add_trace(go.Scatter(
             x=prediction_df.index,
@@ -41,7 +40,7 @@ def plot_historical_and_prediction(historical_df, prediction_df, variable, varia
     return fig
 
 def plot_feature_importances(variable_description, importances):
-    print(f"Plotting importances for {variable_description}:", importances)
+    logger.info(f"Plotting importances for {variable_description}:", importances)
     df = pd.DataFrame(list(importances.items()), columns=['Feature', 'Importance'])
     df['Feature'] = df['Feature'].map(get_variable_description)
     df = df.sort_values('Importance', ascending=True)
@@ -75,7 +74,6 @@ def historical_vs_predictions(all_variables):
     fig = plot_historical_and_prediction(historical_df, prediction_df, selected_variable, selected_description)
     st.plotly_chart(fig)
 
-    # Display feature importances
     feature_importances = load_feature_importances()
     if selected_variable in feature_importances:
         st.subheader("Feature Importances")

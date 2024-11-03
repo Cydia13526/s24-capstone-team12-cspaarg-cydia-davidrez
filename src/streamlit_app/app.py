@@ -7,8 +7,9 @@ from streamlit_app.data.fred_data_loader import get_all_variable_descriptions, v
 from streamlit_app.pages.historical_vs_predictions_tab import historical_vs_predictions
 from streamlit_app.pages.user_forecast import user_forecast
 from streamlit_app.models.model_loader import ModelLoader
-from streamlit_app.services.find_best_chain import find_best_chain
+from streamlit_app.components.chain import find_best_chain
 from streamlit_app.utils.common_util import load_data
+from streamlit_app.configs.logger_config import logger
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
 # Add this at the beginning of the file, right after the imports
@@ -17,7 +18,7 @@ st.set_page_config(layout="wide")
 # Main Streamlit app
 def main():
     try:
-        print("------- Project Set Up Pipeline Started -------")
+        logger.info("------- Project Set Up Pipeline Started -------")
         file_path = os.path.join(os.getcwd(), "src/resources/models/feature_importances.json")
         if os.path.exists(file_path) == False:
             original_data, best_chain = start_pipeline()
@@ -27,7 +28,7 @@ def main():
             initial_chain = ['FEDFUNDS']
             best_chain = find_best_chain(initial_chain, differenced_data)
 
-        print("------- Streamlit App Started -------")
+        logger.info("------- Streamlit App Started -------")
         st.title("Macroeconomic Data and Predictions Dashboard")
 
         models = ModelLoader.load_models(best_chain[1:])

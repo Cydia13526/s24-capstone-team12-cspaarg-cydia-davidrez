@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from datetime import datetime as dt
 sys.path.append(os.path.join(os.getcwd(), 'src'))
 from streamlit_app.utils.common_util import get_fred_api_key
+from streamlit_app.configs.logger_config import logger
 
 load_dotenv()
 
@@ -31,11 +32,9 @@ variable_descriptions = {
     "T10Y2Y": "10-Year Treasury Minus 2-Year Treasury"
 }
 
-# Function to get the description for a given variable code
 def get_variable_description(variable_code):
     return variable_descriptions.get(variable_code, variable_code)
 
-# Add this new function to get all variable descriptions
 def get_all_variable_descriptions():
     return list(variable_descriptions.values())
 
@@ -84,7 +83,7 @@ class FREDDataLoader:
 
     def save_data(self, df, filename='preprocessed_economic_data.csv'):
         df.to_csv(f'../data/processed/{filename}', index=True)
-        print(f'Data saved to data/processed/{filename}')
+        logger.info(f'Data saved to data/processed/{filename}')
 
     def get_recession_dates(self):
         return self.recession_dates

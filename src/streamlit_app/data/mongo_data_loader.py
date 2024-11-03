@@ -1,59 +1,38 @@
-import os
+import os, sys
 import pandas as pd
 import sqlite3
 import streamlit as st
+sys.path.append(os.path.join(os.getcwd(), "src"))
+from streamlit_app.configs.logger_config import logger
 
 class MongoDataLoader:
     def __init__(self, db_path):
-        """
-        Initializes the MongoDataLoader with the given variables and database path.
-
-        :param variables: List of variables to load from the database.
-        :param db_path: Path to the SQLite database.
-        """
         self.db_path = db_path
         self.conn = None
 
     def __enter__(self):
-        """Establishes a database connection when entering the context."""
         self.conn = sqlite3.connect(self.db_path)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Closes the database connection when exiting the context."""
         if self.conn:
             self.conn.close()
 
     def _execute_query(self, query, parse_dates=None, error_message=None):
-        """
-        Executes an SQL query and handles errors.
-
-        :param query: The SQL query to execute.
-        :param parse_dates: Columns to parse as dates (optional).
-        :param error_message: Custom error message for exceptions (optional).
-        :return: A pandas DataFrame with the query results.
-        """
         try:
             df = pd.read_sql_query(query, self.conn, parse_dates=parse_dates)
             return df
         except sqlite3.OperationalError as e:
-            print(f"SQLite error: {str(e)}")
+            logger.info(f"SQLite error: {str(e)}")
             if error_message:
                 st.warning(f"{error_message}: {str(e)}")
         except Exception as e:
-            print(f"Unexpected error: {str(e)}")
+            logger.info(f"Unexpected error: {str(e)}")
             if error_message:
                 st.error(f"An error occurred: {str(e)}")
         return pd.DataFrame()
 
     def _process_data(self, df, date_column):
-        """
-        Processes the loaded data: converts date column to datetime, sets the index, and sorts the index.
-
-        :param df: The DataFrame to process.
-        :param date_column: The column name to convert to datetime and set as index.
-        :return: A processed pandas DataFrame.
-        """
         if not df.empty:
             df[date_column] = pd.to_datetime(df[date_column])
             df.set_index(date_column, inplace=True)
@@ -61,11 +40,6 @@ class MongoDataLoader:
         return df
 
     def load_historical_data(self, variables):
-        """
-        Loads historical macroeconomic data from the database.
-
-        :return: A pandas DataFrame with historical data, indexed by date.
-        """
         if variables:
             query = f"SELECT date, {', '.join(variables)} FROM historical_macro"
         else:
@@ -74,11 +48,6 @@ class MongoDataLoader:
         return self._process_data(df, 'date')
 
     def load_prediction_data(self, variables):
-        """
-        Loads prediction data for the specified variable from the database.
-
-        :return: A pandas DataFrame with prediction data, indexed by date.
-        """
         if not variables:
             raise ValueError("No variables specified for prediction data.")
 
@@ -108,9 +77,9 @@ class MongoDataLoader:
             cursor.execute(sql, values)
 
         self.conn.commit()
-        print("Historical data inserted into the database.")
+        logger.info("Historical data inserted into the database.")
 
-    def insert_predictions(self, variable, predictions):
+    def insert_predictions_data(self, variable, predictions):
         cursor = self.conn.cursor()
 
         cursor.execute(f"PRAGMA table_info(predictions_macro)")
@@ -127,4 +96,23 @@ class MongoDataLoader:
             """, (date.strftime('%Y-%m-%d'), value))
 
         self.conn.commit()
-        print(f"Predictions for {variable} inserted into the database.")
+        logger.info(f"Predictions for {variable} inserted into the database.")
+
+    def insert_forecast_data(self, variable, forecast_data):
+        cursor = self.conn.cursor()
+
+        cursor.execute("PRAGMA table_info(forecasts_macro)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if f"{variable}_forecast" not in columns:
+            cursor.execute(f"ALTER TABLE forecasts_macro ADD COLUMN {variable}_forecast REAL")
+
+        for date, value in forecast_data.items():
+            cursor.execute(f"""
+            INSERT INTO forecasts_macro (date,  model, {variable}_forecast)
+            VALUES (?, ?, ?)
+            ON CONFLICT(date) DO UPDATE SET
+            {variable}_forecast = excluded.{variable}_forecast
+            """, (date.strftime('%Y-%m-%d'),  'user_forecast',  float(value)))
+
+        self.conn.commit()
+        logger.info(f"Forecasts for {variable} stored in the database.")
