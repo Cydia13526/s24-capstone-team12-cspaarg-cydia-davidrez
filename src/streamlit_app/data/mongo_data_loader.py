@@ -100,15 +100,42 @@ class MongoDataLoader:
 
     def insert_forecast_data(self, variable, forecast_data):
         cursor = self.conn.cursor()
+        self.create_forecast_table()
 
-        cursor.execute("PRAGMA table_info(forecasts_macro)")
+        cursor.execute("PRAGMA table_info(forecast_macro)")
         columns = [row[1] for row in cursor.fetchall()]
-        if f"{variable}_forecast" not in columns:
-            cursor.execute(f"ALTER TABLE forecasts_macro ADD COLUMN {variable}_forecast REAL")
 
-        for date, value in forecast_data.items():
+        if f"{variable}_forecast" not in columns:
+            cursor.execute(f"ALTER TABLE forecast_macro ADD COLUMN {variable}_forecast REAL")
+
+        forecast_data_dict = dict(forecast_data)
+
+        for date, value in forecast_data_dict.items():
             cursor.execute(f"""
-            INSERT INTO forecasts_macro (date,  model, {variable}_forecast)
+            INSERT INTO forecast_macro (date, model, {variable}_forecast)
+            VALUES (?, ?, ?)
+            ON CONFLICT(date) DO UPDATE SET
+            {variable}_forecast = excluded.{variable}_forecast
+            """, (date.strftime('%Y-%m-%d'), 'user_forecast', float(value)))
+
+        self.conn.commit()
+        logger.info(f"Forecasts for {variable} stored in the database.")
+
+
+    def insert_forecast_data(self, variable, forecast_data):
+        cursor = self.conn.cursor()
+
+        cursor.execute("PRAGMA table_info(forecast_macro)")
+        columns = [row[1] for row in cursor.fetchall()]
+
+        if f"{variable}_forecast" not in columns:
+            cursor.execute(f"ALTER TABLE forecast_macro ADD COLUMN {variable}_forecast REAL")
+
+        forecast_data_dict = dict(forecast_data)
+
+        for date, value in forecast_data_dict.items():
+            cursor.execute(f"""
+            INSERT INTO forecast_macro (date,  model, {variable}_forecast)
             VALUES (?, ?, ?)
             ON CONFLICT(date) DO UPDATE SET
             {variable}_forecast = excluded.{variable}_forecast

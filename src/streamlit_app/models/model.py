@@ -23,6 +23,16 @@ def prepare_data(original_data, best_chain, variable):
     X_diff['FEDFUNDS_Actual'] = X_diff['FEDFUNDS'].cumsum() + first_fed_funds
 
     X_diff = Forecaster.add_engineered_features(X_diff)
+    features_to_fill = [
+        'FEDFUNDS_pct_change', 'FEDFUNDS_Duration', 'Time_Since_Change',
+        'FEDFUNDS_interaction', 'FEDFUNDS_Deviation', 'FEDFUNDS_Direction',
+        'FEDFUNDS_Absolute_Change', 'FEDFUNDS_Rolling_Volatility'
+    ]
+    X_diff[features_to_fill] = X_diff[features_to_fill].fillna(0)
+    # # For lag features, initial NaNs are expected; decide whether to fill or drop
+    # # Here, we'll drop rows with NaNs resulting from lagging
+    X_diff.dropna(inplace=True)
+
     y_diff = y_diff.loc[X_diff.index]
 
     train_size = int(len(X_diff) * 0.8)

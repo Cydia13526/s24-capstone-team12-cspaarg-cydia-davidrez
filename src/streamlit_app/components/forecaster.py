@@ -81,17 +81,6 @@ class Forecaster:
         # 9. Interaction with other variables, if available
         if 'UNRATE' in diff_df.columns:
             diff_df['FEDFUNDS_UNRATE_interaction'] = diff_df['FEDFUNDS'] * diff_df['UNRATE']
-
-        # 10. Handle missing values in calculated features
-        features_to_fill = [
-            'FEDFUNDS_pct_change', 'FEDFUNDS_Duration', 'Time_Since_Change',
-            'FEDFUNDS_interaction', 'FEDFUNDS_Deviation', 'FEDFUNDS_Direction',
-            'FEDFUNDS_Absolute_Change', 'FEDFUNDS_Rolling_Volatility'
-        ]
-        diff_df[features_to_fill] = diff_df[features_to_fill].fillna(0)
-        # For lag features, initial NaNs are expected; decide whether to fill or drop
-        # Here, we'll drop rows with NaNs resulting from lagging
-        diff_df.dropna(inplace=True)
         return diff_df
 
     def prepare_features(self, current_forecast_df: pd.DataFrame, variable: str) -> pd.DataFrame:
@@ -148,6 +137,7 @@ class Forecaster:
             last_historical_fedfunds = self.historical_df['FEDFUNDS'].iloc[-1]
             diff_df['FEDFUNDS'] = self.forecasted_fedfunds.diff().fillna(self.forecasted_fedfunds.iloc[0] - last_historical_fedfunds)
             current_forecast_df = self.add_engineered_features(diff_df)
+            current_forecast_df.fillna(0, inplace=True)
 
             logger.info(f"current_forecast_df shape after adding features: {current_forecast_df.shape}")
             logger.info(f"current_forecast_df columns: {current_forecast_df.columns}")
@@ -177,6 +167,6 @@ class Forecaster:
             logger.info(f"Features used for {variable}:")
             logger.info(X_forecast.columns)
 
-            with MongoDataLoader(os.path.join(os.getcwd(), "src/resources/data/mongo_db/predictions_macro.db")) as loader:
-                loader.insert_forecast_data(variable, forecast_original)
+            with MongoDataLoader(os.path.join(os.getcwd(), "src/resources/data/mongo_db/forecast_macro.db")) as loader:
+                loader.insert_forecast_data(variable, zip(forecast_df.index, forecast_original))
         return forecasts

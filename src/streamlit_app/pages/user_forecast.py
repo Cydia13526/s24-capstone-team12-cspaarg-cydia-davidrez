@@ -131,6 +131,16 @@ def forecast_macro_variables(fedfunds_forecast, original_data, differenced_data,
     diff_df = forecast_df.copy()
 
     forecast_df = Forecaster.add_engineered_features(diff_df)
+    features_to_fill = [
+        'FEDFUNDS_pct_change', 'FEDFUNDS_Duration', 'Time_Since_Change',
+        'FEDFUNDS_interaction', 'FEDFUNDS_Deviation', 'FEDFUNDS_Direction',
+        'FEDFUNDS_Absolute_Change', 'FEDFUNDS_Rolling_Volatility'
+    ]
+    forecast_df[features_to_fill] = forecast_df[features_to_fill].fillna(0)
+    # # For lag features, initial NaNs are expected; decide whether to fill or drop
+    # # Here, we'll drop rows with NaNs resulting from lagging
+    forecast_df.dropna(inplace=True)
+
     forecasts = {'FEDFUNDS': fedfunds_forecast}
 
     for variable in best_chain[1:]:
@@ -191,7 +201,9 @@ def adjust_fed_funds_rate():
             change_value = int(change.split()[0]) if change != "No change" else 0
             st.session_state.changes.extend([change_value] * months)
             st.session_state.current_month += months
-            st.session_state.current_month = min(st.session_state.current_month, st.session_state.forecast_months - 1)
+            if st.session_state.current_month >= st.session_state.forecast_months:
+                st.session_state.current_month = st.session_state.forecast_months - 1
+
 
 def forecast_macros(fed_funds_forecast, original_data, models, best_chain, start_date):
     fed_funds_forecast_series = pd.Series(fed_funds_forecast[1:], index=pd.date_range(start=start_date, periods=st.session_state.forecast_months, freq='MS'))
@@ -207,7 +219,6 @@ def forecast_macros(fed_funds_forecast, original_data, models, best_chain, start
     store_forecasts(st.session_state.forecasts, original_data)
 
 def display_forecast_results(original_data, best_chain):
-    if st.session_state.forecasts is not None:
         selected_variable = st.selectbox("Select variable to display", best_chain, index=0)
 
         if selected_variable:
@@ -245,4 +256,6 @@ def user_forecast(original_data, best_chain, models):
         forecast_macros(fed_funds_forecast, original_data, models, best_chain, start_date)
 
     # Display forecast results
-    display_forecast_results(original_data, best_chain)
+    if st.session_state.forecasts is not None:
+        display_forecast_results(original_data, best_chain)
+

@@ -42,7 +42,7 @@ def create_forecast_database():
 
     create_table_query = f'''
     CREATE TABLE IF NOT EXISTS forecast_macro (
-        date TEXT,
+        date TEXT PRIMARY KEY,
         model TEXT,
         {', '.join([f"{var}_forecast REAL" for var in variables])}
     )
