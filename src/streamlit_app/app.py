@@ -5,7 +5,7 @@ sys.path.append(os.path.join(os.getcwd(), 'src'))
 from streamlit_app.pages.historical_data_comparison_tab import historical_data_comparison
 from streamlit_app.data.fred_data_loader import get_all_variable_descriptions, variable_descriptions, get_variable_description
 from streamlit_app.pages.historical_vs_predictions_tab import historical_vs_predictions
-from streamlit_app.pages.user_forecast import user_forecast
+from streamlit_app.pages.user_forecast import user_forecast_compare
 from streamlit_app.models.model_loader import ModelLoader
 from streamlit_app.components.chain import find_best_chain
 from streamlit_app.utils.common_util import load_data
@@ -37,7 +37,7 @@ def main():
         with tab2:
             historical_vs_predictions(all_variables)
         with tab3:
-            user_forecast(original_data, best_chain, models)
+            user_forecast_compare(original_data, best_chain, models)
 
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
