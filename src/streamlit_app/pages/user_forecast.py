@@ -4,13 +4,12 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
 sys.path.append(os.path.join(os.getcwd(), 'src'))
 from streamlit_app.components.forecaster import Forecaster
 from streamlit_app.utils.common_util import add_recession_highlights
 from streamlit_app.data.mongo_data_loader import MongoDataLoader
 from streamlit_app.configs.logger_config import logger
-
+from streamlit_app.data.fred_data_loader import variable_descriptions
 
 def plot_fedfunds_forecast(forecast, start_date, current_month):
     date_range = pd.date_range(start=start_date, periods=len(forecast), freq='MS')
@@ -208,21 +207,24 @@ def initialize_session_state_scenario(scenario_number, original_data):
         st.session_state[f'current_month_{scenario_number}'] = 0
 
 def adjust_fed_funds_rate(scenario_number):
-    col1, col2, col3 = st.columns(3)
-
+    col1, col2, col3, col4= st.columns(4)
     with col1:
         change = st.selectbox("Change", ["-50 bps", "-25 bps", "No change", "+25 bps", "+50 bps"], index=2, key=f"fed_fund_rate_select_box{scenario_number}")
     with col2:
-        months = st.number_input("Apply for how many months?", min_value=1, max_value=st.session_state[f'forecast_months_{scenario_number}'] - st.session_state[f'current_month_{scenario_number}'] , value=1, key=f"fed_fund_rate_number_input{scenario_number}")
+        months = st.number_input("Month(s) Applied", min_value=1, max_value=st.session_state[f'forecast_months_{scenario_number}'] - st.session_state[f'current_month_{scenario_number}'] , value=1, key=f"fed_fund_rate_number_input{scenario_number}")
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Apply Change", key=f"apply_change_{scenario_number}"):
             change_value = int(change.split()[0]) if change != "No change" else 0
             st.session_state[f'changes_{scenario_number}'].extend([change_value] * months)
             st.session_state[f'current_month_{scenario_number}'] += months
-            if st.session_state[f'current_month_{scenario_number}']  >= st.session_state[f'forecast_months_{scenario_number}']:
-                st.session_state[f'current_month_{scenario_number}']  = st.session_state[f'forecast_months_{scenario_number}'] - 1
-
+            if st.session_state[f'current_month_{scenario_number}'] >= st.session_state[f'forecast_months_{scenario_number}']:
+                st.session_state[f'current_month_{scenario_number}'] = st.session_state[f'forecast_months_{scenario_number}'] - 1
+    with col4:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button(f"Reset Forecast", key=f"reset_forecast_{scenario_number}"):
+            st.session_state[f"changes_{scenario_number}"] = []
+            st.session_state[f"current_month_{scenario_number}"] = 0
 
 def forecast_macros(fed_funds_forecast, original_data, models, best_chain, start_date, scenario_number):
     fed_funds_forecast_series = pd.Series(fed_funds_forecast[1:], index=pd.date_range(start=start_date, periods=st.session_state[f'forecast_months_{scenario_number}'], freq='MS'))
@@ -238,8 +240,6 @@ def forecast_macros(fed_funds_forecast, original_data, models, best_chain, start
     store_forecasts(st.session_state[f'forecasts_{scenario_number}'], original_data)
 
 def display_forecast_results(original_data, best_chain, scenario_number):
-    # selected_variable = st.selectbox("Select variable to display", best_chain, index=0)
-    # all_descriptions = get_all_variable_descriptions()
     selected_descriptions = st.multiselect("Select macroeconomic variables to compare", best_chain, key=f"forecast_multiselect{scenario_number}")
 
     if selected_descriptions:
@@ -250,15 +250,12 @@ def add_scenario():
     st.session_state.scenario_count += 1
 
 def user_forecast(original_data, best_chain, models, scenario_number=1):
-    st.header(f"User-Defined Federal Funds Rate Forecast - Scenario {scenario_number}")
+    st.header(f"Scenario {scenario_number}")
 
     # 1. Initialize session state for this specific scenario
     initialize_session_state_scenario(scenario_number, original_data)
 
     # 2. Reset forecast if requested for this scenario
-    if st.button(f"Reset Forecast - Scenario {scenario_number}", key=f"reset_forecast_{scenario_number}"):
-        st.session_state[f"changes_{scenario_number}"] = []
-        st.session_state[f"current_month_{scenario_number}"] = 0
 
     # 3. Get user inputs specific to this scenario
     st.session_state[f"forecast_months_{scenario_number}"] = st.slider(
@@ -302,15 +299,18 @@ def user_forecast_compare(original_data, best_chain, models):
 
     st.write("Click 'Add Scenario' to create additional scenarios for analysis. (Maximum 3 scenarios)")
 
-    col1, col2 = st.columns(2)
+    col1, spacer, col2 = st.columns([1, 0.2, 1])
+
     with col1:
         if st.session_state.scenario_count < 3:
             if st.button("Add Scenario"):
                 st.session_state.scenario_count += 1
+
     with col2:
         if st.session_state.scenario_count > 1:
             if st.button("Remove Scenario"):
                 st.session_state.scenario_count -= 1
+
 
     columns = st.columns(st.session_state.scenario_count)
     for i in range(1, st.session_state.scenario_count + 1):
