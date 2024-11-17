@@ -90,8 +90,6 @@ class Forecaster:
                 features.append(prev_var)
 
         X_forecast = current_forecast_df[features]
-        logger.info(f"X_forecast shape: {X_forecast.shape}")
-        logger.info(f"X_forecast columns: {X_forecast.columns}")
 
         required_features = self.models[variable].get_booster().feature_names
         for feat in required_features:
@@ -126,21 +124,13 @@ class Forecaster:
         forecast_df = pd.DataFrame({'FEDFUNDS_Actual': self.forecasted_fedfunds})
         forecasts = {'FEDFUNDS': self.forecasted_fedfunds}
 
-        logger.info(f"Initial forecast_df shape: {forecast_df.shape}")
-        logger.info(f"Initial forecast_df index: {forecast_df.index}")
-
         for variable in self.variables[1:]:
-            logger.info(f"Forecasting {variable}")
-
             diff_df = forecast_df.copy()
             diff_df['FEDFUNDS_Actual'] = self.forecasted_fedfunds
             last_historical_fedfunds = self.historical_df['FEDFUNDS'].iloc[-1]
             diff_df['FEDFUNDS'] = self.forecasted_fedfunds.diff().fillna(self.forecasted_fedfunds.iloc[0] - last_historical_fedfunds)
             current_forecast_df = self.add_engineered_features(diff_df)
             current_forecast_df.fillna(0, inplace=True)
-
-            logger.info(f"current_forecast_df shape after adding features: {current_forecast_df.shape}")
-            logger.info(f"current_forecast_df columns: {current_forecast_df.columns}")
             
             if current_forecast_df.empty:
                 logger.info(f"Warning: No data available for forecasting {variable}")
@@ -152,20 +142,10 @@ class Forecaster:
             model = models[variable]
             forecast_diff = model.predict(X_forecast)
 
-            logger.info(f"forecast_diff shape: {forecast_diff.shape}")
-            logger.info(f"forecast_diff: {forecast_diff}")
-
             last_actual = data[variable].iloc[-1]
             forecast_original = last_actual + np.cumsum(forecast_diff)
             forecasts[variable] = pd.Series(forecast_original, index=forecast_df.index)
             forecast_df[variable] = forecast_diff
-
-            logger.info(f"forecast_original shape: {forecast_original.shape}")
-            logger.info(f"forecast_original: {forecast_original}")
-            logger.info(f"Model used for {variable}:")
-            logger.info(model)
-            logger.info(f"Features used for {variable}:")
-            logger.info(X_forecast.columns)
 
             with MongoDataLoader(os.path.join(os.getcwd(), "src/resources/data/mongo_db/forecast_macro.db")) as loader:
                 loader.insert_forecast_data(variable, zip(forecast_df.index, forecast_original))

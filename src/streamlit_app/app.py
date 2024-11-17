@@ -5,14 +5,21 @@ sys.path.append(os.path.join(os.getcwd(), 'src'))
 from streamlit_app.pages.historical_data_comparison_tab import historical_data_comparison
 from streamlit_app.data.fred_data_loader import get_all_variable_descriptions, variable_descriptions, get_variable_description
 from streamlit_app.pages.historical_vs_predictions_tab import historical_vs_predictions
-from streamlit_app.pages.user_forecast import user_forecast_compare
+from streamlit_app.pages.user_forecast_tab import user_forecast_compare
 from streamlit_app.models.model_loader import ModelLoader
 from streamlit_app.components.chain import find_best_chain
 from streamlit_app.utils.common_util import load_data
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
 # Add this at the beginning of the file, right after the imports
-st.set_page_config(layout="wide")
+
+st.set_page_config(
+    page_title="Macroeconomic Data and Predictions Dashboard",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+    menu_items={}
+)
 
 # Main Streamlit app
 def main():
