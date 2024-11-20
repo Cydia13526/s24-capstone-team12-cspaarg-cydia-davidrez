@@ -27,6 +27,7 @@ class MongoDataLoader:
         insert_historical_data(data): Inserts or updates historical data in the database.
         insert_predictions_data(variable, predictions): Inserts or updates predictions data for a specified variable.
         insert_forecast_data(variable, forecast_data): Inserts or updates forecast data for a specified variable.
+        create_forecast_table(): Creates the forecast_macro table in the database if it doesn't exist.
     """
     def __init__(self, db_path):
         """
@@ -224,3 +225,18 @@ class MongoDataLoader:
 
         self.conn.commit()
         logger.info(f"Forecasts for {variable} stored in the database.")
+
+    def create_forecast_table(self):
+        """
+        Creates the forecast_macro table in the database if it doesn't exist.
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS forecast_macro (
+            date TEXT PRIMARY KEY,
+            model TEXT,
+            variable_forecast REAL
+        )
+        """)
+        self.conn.commit()
+        logger.info("Forecast table created or already exists.")
