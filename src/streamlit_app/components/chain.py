@@ -7,6 +7,15 @@ sys.path.append(os.path.join(os.getcwd(), 'src'))
 from streamlit_app.configs.logger_config import logger
 
 def calculate_vif(X: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate the Variance Inflation Factor (VIF) for each feature in the dataset.
+
+    Args:
+        X (pd.DataFrame): Input features (independent variables).
+
+    Returns:
+        pd.DataFrame: A DataFrame with features and their corresponding VIF values.
+    """
     vif_data = pd.DataFrame()
     vif_data['feature'] = X.columns
     vif_data['VIF'] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
@@ -14,6 +23,18 @@ def calculate_vif(X: pd.DataFrame) -> pd.DataFrame:
 
 
 def check_pval_and_vif(model, vif_data, pval_threshold: float, vif_threshold: float) -> bool:
+    """
+    Check whether the last variable in the regression model meets p-value and VIF thresholds.
+
+    Args:
+        model: A fitted statsmodels regression model.
+        vif_data (pd.DataFrame): DataFrame containing VIF values for all features.
+        pval_threshold (float): Maximum acceptable p-value for variable significance.
+        vif_threshold (float): Maximum acceptable VIF value for multicollinearity.
+
+    Returns:
+        bool: True if conditions are met, False otherwise.
+    """
     last_var = model.model.exog_names[-1]
     pvalue = model.pvalues[last_var]
 
@@ -27,6 +48,19 @@ def check_pval_and_vif(model, vif_data, pval_threshold: float, vif_threshold: fl
     return True
 
 def evaluate_variable(data: pd.DataFrame, predictive_chain: List[str], column: str, pval_threshold: float) -> pd.DataFrame:
+    """
+    Evaluate a single variable for addition to the predictive chain based on regression results.
+
+    Args:
+        data (pd.DataFrame): The dataset containing predictors and the target variable.
+        predictive_chain (List[str]): Current list of predictive variables.
+        column (str): Variable to evaluate for inclusion.
+        pval_threshold (float): Maximum acceptable p-value for variable significance.
+
+    Returns:
+        pd.DataFrame: A DataFrame summarizing the regression results for the variable,
+                      or an empty DataFrame if conditions are not met.
+    """
     X = data[predictive_chain]
     X = sm.add_constant(X)
     Y = data[column]
@@ -47,6 +81,18 @@ def evaluate_variable(data: pd.DataFrame, predictive_chain: List[str], column: s
 
 
 def find_best_chain(predictive_chain: List[str], data: pd.DataFrame, max_vars: int = None, pval_threshold: float = 0.10):
+    """
+    Find the optimal chain of predictive variables by iteratively adding significant variables.
+
+    Args:
+        predictive_chain (List[str]): Initial list of predictive variables.
+        data (pd.DataFrame): The dataset containing predictors and the target variable.
+        max_vars (int, optional): Maximum number of variables to include in the chain. Defaults to None.
+        pval_threshold (float): Maximum acceptable p-value for variable significance.
+
+    Returns:
+        List[str]: The final list of predictive variables.
+    """
     results_df = pd.DataFrame(columns=['Variable', 'Adj-R-squared', 'Coefficient', 'P-value', 'Max VIF'])
 
     if max_vars is None:

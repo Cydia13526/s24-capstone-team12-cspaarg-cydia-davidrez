@@ -33,13 +33,31 @@ variable_descriptions = {
 }
 
 def get_variable_description(variable_code):
+    """
+    Get the description of a given FRED variable code.
+
+    Args:
+        variable_code (str): The FRED variable code.
+
+    Returns:
+        str: The description of the variable, or the variable code if no description exists.
+    """
     return variable_descriptions.get(variable_code, variable_code)
 
 def get_all_variable_descriptions():
+    """
+    Retrieve all descriptions of variables in the dataset.
+
+    Returns:
+        list: A list of all variable descriptions.
+    """
     return list(variable_descriptions.values())
 
 class FREDDataLoader:
     def __init__(self):
+        """
+        Initialize the FREDDataLoader with API client and variables.
+        """
         self.fred = fred.Fred(api_key=get_fred_api_key())
         self.variables = [
                 "MORTGAGE30US", # 30-Year mortgage rate
@@ -65,6 +83,16 @@ class FREDDataLoader:
             ]
 
     def load_data(self, start_date='1954-07-01', end_date=dt.today().strftime('%Y-%m-%d')):
+        """
+        Fetch economic data for specified variables from the FRED API.
+
+        Args:
+            start_date (str): Start date for data retrieval (default is '1954-07-01').
+            end_date (str): End date for data retrieval (default is today's date).
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the raw data for the specified variables.
+        """
         data = {}
         for var in self.variables:
             series = self.fred.get_series(var, observation_start=start_date, observation_end=end_date)
@@ -74,6 +102,15 @@ class FREDDataLoader:
         return df
     
     def preprocess_data(self, df):
+        """
+        Preprocess the retrieved data by filling missing values and resampling.
+
+        Args:
+            df (pd.DataFrame): Raw data DataFrame.
+
+        Returns:
+            pd.DataFrame: Preprocessed data with filled missing values and monthly resampling.
+        """
         preprocessed_df = df.copy()
         preprocessed_df.fillna(method='ffill', inplace=True)
         preprocessed_df.fillna(method='bfill', inplace=True)
@@ -82,10 +119,26 @@ class FREDDataLoader:
         return preprocessed_df
 
     def save_data(self, df, filename='preprocessed_economic_data.csv'):
+        """
+        Save the preprocessed data to a CSV file.
+
+        Args:
+            df (pd.DataFrame): The preprocessed DataFrame.
+            filename (str): The name of the file to save the data (default is 'preprocessed_economic_data.csv').
+
+        Returns:
+            None
+        """
         df.to_csv(f'../data/processed/{filename}', index=True)
         logger.info(f'Data saved to data/processed/{filename}')
 
     def get_recession_dates(self):
+        """
+        Placeholder for a function to retrieve recession dates.
+
+        Returns:
+            None: Not yet implemented.
+        """
         return self.recession_dates
 
 if __name__ == '__main__':

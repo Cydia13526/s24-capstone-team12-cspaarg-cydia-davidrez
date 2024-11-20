@@ -1,3 +1,23 @@
+"""
+This module trains machine learning models to forecast macroeconomic variables using
+a time-series dataset and XGBoost regression. It performs data preparation, model training,
+feature engineering, prediction, and result storage.
+
+Usage:
+1. Provide the best causal chain of variables and the original dataset to `train_model`.
+2. Models are trained for each variable in the chain, storing predictions, models,
+   and feature importances.
+
+Functions:
+- `prepare_data`: Prepares training and testing datasets.
+- `fit_predict_model`: Trains an XGBoost model and generates predictions iteratively.
+- `reconstruct_actuals`: Reconstructs actual values from differenced predictions.
+- `save_predictions_to_db`: Stores prediction results in a MongoDB database.
+- `save_model`: Saves the trained model as a pickle file.
+- `save_feature_importances`: Logs and saves top feature importances.
+- `train_model`: Orchestrates the end-to-end training process.
+
+"""
 import json
 import sys, os
 import pickle
@@ -10,6 +30,20 @@ from streamlit_app.configs.logger_config import logger
 from streamlit_app.components.forecaster import Forecaster
 
 def prepare_data(original_data, best_chain, variable):
+    """
+    Prepares training and testing datasets by differencing the data and applying feature engineering.
+
+    Args:
+        original_data (pd.DataFrame): The original time-series dataset.
+        best_chain (list): Ordered list of variables representing the causal chain.
+        variable (str): Target variable for prediction.
+
+    Returns:
+        tuple: Split datasets (X_train, X_test, y_train, y_test).
+
+    Raises:
+        ValueError: If 'FEDFUNDS' column is not found in the dataset.
+    """
     X = original_data[best_chain[:best_chain.index(variable)]]
     y = original_data[variable]
 
@@ -44,6 +78,18 @@ def prepare_data(original_data, best_chain, variable):
     return X_train, X_test, y_train, y_test
 
 def fit_predict_model(X_train, y_train, X_test, y_test):
+    """
+    Trains an XGBoost model incrementally and makes predictions on the test set.
+
+    Args:
+        X_train (pd.DataFrame): Training features.
+        y_train (pd.Series): Training target variable.
+        X_test (pd.DataFrame): Testing features.
+        y_test (pd.Series): Testing target variable.
+
+    Returns:
+        tuple: Trained XGBoost model and predictions for the test set.
+    """
     model = xgb.XGBRegressor(
         objective='reg:squarederror',
         learning_rate=0.1,
@@ -71,6 +117,19 @@ def fit_predict_model(X_train, y_train, X_test, y_test):
 
 
 def reconstruct_actuals(original_data, variable, train_size, predictions, X_test):
+    """
+     Reconstructs the original scale of the target variable from differenced predictions.
+
+     Args:
+         original_data (pd.DataFrame): The original dataset.
+         variable (str): Target variable for prediction.
+         train_size (int): Number of training samples.
+         predictions (list): Differenced predictions.
+         X_test (pd.DataFrame): Testing features.
+
+     Returns:
+         dict: Reconstructed actual values for the test set.
+     """
     last_actual_value = original_data[variable].iloc[train_size]
     real_predictions = {}
     cumulative_sum = last_actual_value
@@ -83,6 +142,13 @@ def reconstruct_actuals(original_data, variable, train_size, predictions, X_test
     return real_predictions
 
 def save_predictions_to_db(variable, real_predictions):
+    """
+    Saves reconstructed predictions to a MongoDB database.
+
+    Args:
+        variable (str): Target variable for prediction.
+        real_predictions (dict): Reconstructed predictions.
+    """
     try:
         with MongoDataLoader(os.path.join(os.getcwd(), "src/resources/data/mongo_db/predictions_macro.db")) as loader:
             loader.insert_predictions_data(variable, real_predictions)
@@ -91,6 +157,13 @@ def save_predictions_to_db(variable, real_predictions):
         logger.error(f"Failed to save predictions for {variable}: {e}")
 
 def save_model(model, variable):
+    """
+    Saves the trained model to a pickle file.
+
+    Args:
+        model (xgb.XGBRegressor): Trained XGBoost model.
+        variable (str): Target variable for prediction.
+    """
     os.makedirs(os.path.join(os.getcwd(), "src/resources/models"), exist_ok=True)
     model_filename = os.path.join("src/resources/models", f"best_model_{variable}.pkl")
     with open(model_filename, 'wb') as file:
@@ -98,12 +171,33 @@ def save_model(model, variable):
     logger.info(f"Model for {variable} saved as {model_filename}")
 
 def save_feature_importances(model, X_train, variable, feature_importances):
+    """
+    Logs and saves the top 10 feature importances for the trained model.
+
+    Args:
+        model (xgb.XGBRegressor): Trained XGBoost model.
+        X_train (pd.DataFrame): Training features.
+        variable (str): Target variable for prediction.
+        feature_importances (dict): Dictionary to store feature importance values.
+    """
     importances = dict(zip(X_train.columns, model.feature_importances_))
     sorted_importances = sorted(importances.items(), key=lambda x: x[1], reverse=True)[:10]
     feature_importances[variable] = dict(sorted_importances)
     logger.info(f"Top 10 feature importances for {variable}: {feature_importances[variable]}")
 
 def train_model(best_chain, original_data):
+    """
+    Executes the end-to-end training process for variables in the causal chain.
+
+    Args:
+        best_chain (list): Ordered list of variables representing the causal chain.
+        original_data (pd.DataFrame): The original time-series dataset.
+
+    Saves:
+        - Predictions to MongoDB.
+        - Models as pickle files.
+        - Feature importances as a JSON file.
+    """
     feature_importances = {}
 
     for variable in best_chain[1:]:

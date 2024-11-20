@@ -18,6 +18,21 @@ class Forecaster:
 
     @staticmethod
     def add_engineered_features(diff_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Adds engineered features to the provided DataFrame.
+
+        Parameters:
+        -----------
+        - `diff_df` (pd.DataFrame): DataFrame containing input data.
+
+        Returns:
+        --------
+        - `pd.DataFrame`: DataFrame with added features.
+
+        Raises:
+        -------
+        - `ValueError`: If `FEDFUNDS` column is missing in the input DataFrame.
+        """
         if 'FEDFUNDS' not in diff_df.columns:
             raise ValueError("FEDFUNDS column not found in diff_df")
 
@@ -84,6 +99,18 @@ class Forecaster:
         return diff_df
 
     def prepare_features(self, current_forecast_df: pd.DataFrame, variable: str) -> pd.DataFrame:
+        """
+        Prepares feature DataFrame for forecasting a specific variable.
+
+        Parameters:
+        -----------
+        - `current_forecast_df` (pd.DataFrame): DataFrame containing current forecast data.
+        - `variable` (str): The variable for which features are being prepared.
+
+        Returns:
+        --------
+        - `pd.DataFrame`: DataFrame containing features for the forecast model.
+        """
         features = self.fedfund_features(current_forecast_df)
         for prev_var in self.variables[1:self.variables.index(variable)]:
             if prev_var in current_forecast_df.columns:
@@ -101,6 +128,17 @@ class Forecaster:
 
     @staticmethod
     def fedfund_features(df):
+        """
+        Returns a list of features used for FEDFUNDS forecasting.
+
+        Parameters:
+        -----------
+        - `df` (pd.DataFrame): DataFrame to extract feature names.
+
+        Returns:
+        --------
+        - `list`: List of feature names.
+        """
         features = [
             'FEDFUNDS', 'FEDFUNDS_Actual', 'FEDFUNDS_pct_change',
             'FEDFUNDS_Duration', 'FEDFUNDS_Weighted',
@@ -121,6 +159,21 @@ class Forecaster:
         return features
     
     def forecast(self, models, data, target, data_path, model_path):
+        """
+        Forecasts economic variables using predefined models and engineered features.
+
+        Parameters:
+        -----------
+        - `models` (dict): Dictionary of predictive models.
+        - `data` (pd.DataFrame): Historical data for forecasting.
+        - `target` (str): Target variable for primary forecasting.
+        - `data_path` (str): Path to the data directory.
+        - `model_path` (str): Path to the model directory.
+
+        Returns:
+        --------
+        - `dict`: Dictionary containing forecasts for each variable.
+        """
         forecast_df = pd.DataFrame({'FEDFUNDS_Actual': self.forecasted_fedfunds})
         forecasts = {'FEDFUNDS': self.forecasted_fedfunds}
 

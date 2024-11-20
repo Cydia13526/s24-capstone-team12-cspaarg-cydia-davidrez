@@ -1,3 +1,16 @@
+"""
+This module provides functions for visualizing historical macroeconomic data
+and comparing multiple variables using Streamlit and Plotly.
+
+Functions:
+    plot_multi_line(df, title, variable_descriptions):
+        Generates a multi-line Plotly figure to visualize data with highlighted recession periods.
+
+    historical_data_comparison(all_variables):
+        Creates a Streamlit interface for selecting and comparing historical macroeconomic variables.
+
+"""
+
 import sys, os
 import streamlit as st
 import plotly.graph_objects as go
@@ -8,6 +21,17 @@ from streamlit_app.utils.common_util import add_recession_highlights
 from streamlit_app.data.mongo_data_loader import MongoDataLoader
 
 def plot_multi_line(df, title, variable_descriptions):
+    """
+    Generates a multi-line Plotly figure to visualize a DataFrame.
+
+    Args:
+        df (pd.DataFrame): A DataFrame where rows represent time-series data and columns are variables.
+        title (str): Title for the figure.
+        variable_descriptions (list of str): Descriptions corresponding to the DataFrame columns.
+
+    Returns:
+        plotly.graph_objects.Figure: A Plotly figure with multi-line plots and recession highlights.
+    """
     fig = go.Figure()
     for column, description in zip(df.columns, variable_descriptions):
         fig.add_trace(go.Scatter(x=df.index, y=df[column], mode='lines', name=description))
@@ -26,6 +50,19 @@ def plot_multi_line(df, title, variable_descriptions):
     return fig
 
 def historical_data_comparison(all_variables):
+    """
+    Streamlit interface for historical data comparison.
+
+    Displays a multi-select widget for choosing macroeconomic variables to compare.
+    Loads the selected variables' historical data from a MongoDB database.
+    Visualizes the data with a multi-line plot including a range slider and recession highlights.
+
+    Args:
+      all_variables (list of str): A list of all available macroeconomic variables.
+
+    Returns:
+      None
+    """
     st.header("Historical Data Comparison")
     all_descriptions = get_all_variable_descriptions()
     selected_descriptions = st.multiselect("Select macroeconomic variables to compare", all_descriptions, key="historical_multiselect")

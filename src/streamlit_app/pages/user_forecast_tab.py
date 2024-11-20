@@ -1,3 +1,29 @@
+"""
+This module provides utilities for visualizing and forecasting macroeconomic indicators,
+focusing on the Federal Funds Rate and its impacts on other macroeconomic variables.
+
+The functionalities include:
+- Plotting Federal Funds Rate forecasts.
+- Displaying selected macroeconomic variable forecasts.
+- Generating multi-line plots for historical and forecasted data.
+- Creating, adjusting, and storing forecasts.
+- Session state management for Streamlit applications.
+
+Functions:
+    - plot_fedfunds_forecast: Plots a forecast of the Federal Funds Rate.
+    - plot_selected_forecasts: Displays selected macroeconomic variable forecasts.
+    - plot_forecasts: Visualizes forecasts for multiple variables as subplots.
+    - plot_multi_line: Creates a multi-line plot for multiple variables over time.
+    - create_fedfunds_forecast: Generates a Federal Funds Rate forecast based on input changes.
+    - forecast_macro_variables: Predicts macroeconomic variables using trained models.
+    - store_forecasts: Stores generated forecasts in a MongoDB database.
+    - generate_forecasts: Orchestrates the generation and storage of forecasts.
+    - initialize_session_state_scenario: Initializes session state variables for a Streamlit scenario.
+    - adjust_fed_funds_rate: Provides Streamlit UI for adjusting Federal Funds Rate changes.
+    - forecast_macros: Generates macroeconomic forecasts for a given scenario.
+    - display_forecast_results: Displays forecast results interactively in a Streamlit app.
+"""
+
 import sys, os
 import numpy as np
 import streamlit as st
@@ -12,6 +38,17 @@ from streamlit_app.configs.logger_config import logger
 from streamlit_app.data.fred_data_loader import variable_descriptions
 
 def plot_fedfunds_forecast(forecast, start_date, current_month):
+    """
+    Plots the Federal Funds Rate forecast over time with highlights for the current forecast month.
+
+    Parameters:
+        forecast (list of float): List of Federal Funds Rate values.
+        start_date (str): Start date of the forecast in 'YYYY-MM-DD' format.
+        current_month (int): Index of the current forecast month.
+
+    Returns:
+        plotly.graph_objects.Figure: Plotly figure of the forecast.
+    """
     date_range = pd.date_range(start=start_date, periods=len(forecast), freq='MS')
 
     fig = go.Figure()
@@ -54,6 +91,19 @@ def plot_fedfunds_forecast(forecast, start_date, current_month):
     return fig
 
 def plot_selected_forecasts(historical_df, forecast_df, selected_variables, start_date, end_date):
+    """
+    Displays historical and forecasted data for selected macroeconomic variables.
+
+    Parameters:
+        historical_df (pd.DataFrame): Historical data indexed by date.
+        forecast_df (dict): Forecasted data, with variables as keys and lists as values.
+        selected_variables (list of str): Variables to include in the plot.
+        start_date (str): Start date for the plot.
+        end_date (str): End date for the plot.
+
+    Returns:
+        plotly.graph_objects.Figure: Plotly figure of the selected forecasts.
+    """
     fig = go.Figure()
 
     h_df = historical_df.copy()
@@ -96,6 +146,16 @@ def plot_selected_forecasts(historical_df, forecast_df, selected_variables, star
     return fig
 
 def plot_forecasts(historical_data, forecasts):
+    """
+    Plots historical data and forecasts for multiple macroeconomic variables.
+
+    Args:
+        historical_data (pd.DataFrame): Historical time-series data indexed by date.
+        forecasts (dict): A dictionary where keys are variable names and values are forecasted values.
+
+    Returns:
+        plotly.graph_objects.Figure: A multi-panel Plotly figure visualizing historical data and forecasts.
+    """
     fig = make_subplots(rows=len(forecasts), cols=1, subplot_titles=list(forecasts.keys()))
 
     for i, (variable, forecast) in enumerate(forecasts.items(), start=1):
@@ -125,6 +185,17 @@ def plot_forecasts(historical_data, forecasts):
     return fig
 
 def plot_multi_line(df, title, variable_descriptions):
+    """
+      Creates a line plot for multiple variables in a DataFrame.
+
+      Args:
+          df (pd.DataFrame): DataFrame with time-series data for multiple variables indexed by date.
+          title (str): Title of the plot.
+          variable_descriptions (list): Descriptions for each variable in the DataFrame.
+
+      Returns:
+          plotly.graph_objects.Figure: A line plot with interactive features like a range slider.
+      """
     fig = go.Figure()
     for column, description in zip(df.columns, variable_descriptions):
         fig.add_trace(go.Scatter(x=df.index, y=df[column], mode='lines', name=description))
@@ -143,6 +214,17 @@ def plot_multi_line(df, title, variable_descriptions):
     return fig
 
 def create_fedfunds_forecast(forecast_months, start_value, changes):
+    """
+      Generates a Federal Funds Rate forecast based on user-provided changes.
+
+      Args:
+          forecast_months (int): Number of months for the forecast.
+          start_value (float): Initial Federal Funds Rate.
+          changes (list): List of changes in basis points for each period.
+
+      Returns:
+          list: A list representing the Federal Funds Rate forecast.
+      """
     forecast = [start_value]
     for change in changes:
         forecast.append(forecast[-1] + change / 100)  # Convert basis points to percentage
@@ -151,6 +233,19 @@ def create_fedfunds_forecast(forecast_months, start_value, changes):
     return forecast[:forecast_months + 1]
 
 def forecast_macro_variables(fedfunds_forecast, original_data, differenced_data, best_chain, models):
+    """
+    Forecasts macroeconomic variables based on Federal Funds Rate forecasts.
+
+    Args:
+        fedfunds_forecast (pd.Series): Federal Funds Rate forecast.
+        original_data (pd.DataFrame): Original macroeconomic data.
+        differenced_data (pd.DataFrame): Differenced macroeconomic data for stationarity.
+        best_chain (list): Order of variable dependencies for forecasting.
+        models (dict): A dictionary of trained models for forecasting.
+
+    Returns:
+        dict: Forecasts for all macroeconomic variables.
+    """
     forecast_df = pd.DataFrame({'FEDFUNDS': fedfunds_forecast}, index=fedfunds_forecast.index)
     forecast_df['FEDFUNDS'] = forecast_df['FEDFUNDS'].diff().fillna(forecast_df['FEDFUNDS'].iloc[0] - original_data['FEDFUNDS'].iloc[-1])
     diff_df = forecast_df.copy()
@@ -179,6 +274,16 @@ def forecast_macro_variables(fedfunds_forecast, original_data, differenced_data,
     return forecasts
 
 def store_forecasts(forecasts, original_data):
+    """
+    Stores macroeconomic forecasts into a MongoDB database.
+
+    Args:
+        forecasts (dict): A dictionary of forecasted values for macroeconomic variables.
+        original_data (pd.DataFrame): Original macroeconomic data to infer forecast dates.
+
+    Raises:
+        Exception: Logs an error if the forecast data cannot be saved.
+    """
     try:
         last_date = original_data.index[-1]
         forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=len(next(iter(forecasts.values()))))
@@ -192,6 +297,19 @@ def store_forecasts(forecasts, original_data):
         logger.error(f"Failed to save predictions for {variable}: {e}")
 
 def generate_forecasts(original_data, best_chain, models, forecast_months, fedfunds_forecast):
+    """
+      Generates and stores forecasts for macroeconomic variables.
+
+      Args:
+          original_data (pd.DataFrame): Historical macroeconomic data.
+          best_chain (list): Order of variable dependencies for forecasting.
+          models (dict): A dictionary of trained models for forecasting.
+          forecast_months (int): Number of months to forecast.
+          fedfunds_forecast (list): Federal Funds Rate forecast.
+
+      Returns:
+          dict: Forecasts for macroeconomic variables.
+      """
     forecast_dates = pd.date_range(start=original_data.index[-1] + pd.DateOffset(months=1), periods=forecast_months, freq='MS')
     fed_funds_forecast_series = pd.Series(fedfunds_forecast, index=forecast_dates)
 
@@ -201,6 +319,13 @@ def generate_forecasts(original_data, best_chain, models, forecast_months, fedfu
     return forecasts
 
 def initialize_session_state_scenario(scenario_number, original_data):
+    """
+    Initializes Streamlit session state variables for a forecast scenario.
+
+    Args:
+        scenario_number (int): Unique identifier for the scenario.
+        original_data (pd.DataFrame): Historical macroeconomic data.
+    """
     if f'forecast_months_{scenario_number}' not in st.session_state:
         st.session_state[f'forecast_months_{scenario_number}'] = 12
     if f'start_value_{scenario_number}' not in st.session_state:
@@ -213,6 +338,12 @@ def initialize_session_state_scenario(scenario_number, original_data):
         st.session_state[f'current_month_{scenario_number}'] = 0
 
 def adjust_fed_funds_rate(scenario_number):
+    """
+    Handles user inputs to adjust the Federal Funds Rate in a Streamlit application.
+
+    Args:
+        scenario_number (int): Unique identifier for the scenario.
+    """
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         change = st.selectbox("Change", ["-50 bps", "-25 bps", "No change", "+25 bps", "+50 bps"], index=2, key=f"fed_fund_rate_select_box{scenario_number}")
@@ -233,6 +364,17 @@ def adjust_fed_funds_rate(scenario_number):
             st.session_state[f"current_month_{scenario_number}"] = 0
 
 def forecast_macros(fed_funds_forecast, original_data, models, best_chain, start_date, scenario_number):
+    """
+    Forecasts macroeconomic variables and stores results for a specific scenario.
+
+    Args:
+        fed_funds_forecast (list): Federal Funds Rate forecast.
+        original_data (pd.DataFrame): Historical macroeconomic data.
+        models (dict): A dictionary of trained models for forecasting.
+        best_chain (list): Order of variable dependencies for forecasting.
+        start_date (pd.Timestamp): Start date of the forecast.
+        scenario_number (int): Unique identifier for the scenario.
+    """
     fed_funds_forecast_series = pd.Series(fed_funds_forecast[1:], index=pd.date_range(start=start_date, periods=st.session_state[f'forecast_months_{scenario_number}'], freq='MS'))
 
     logger.info(f"fed_funds_forecast_series: {fed_funds_forecast_series}")
@@ -246,6 +388,14 @@ def forecast_macros(fed_funds_forecast, original_data, models, best_chain, start
     store_forecasts(st.session_state[f'forecasts_{scenario_number}'], original_data)
 
 def display_forecast_results(original_data, best_chain, scenario_number):
+    """
+    Displays and visualizes forecast results in a Streamlit application.
+
+    Args:
+        original_data (pd.DataFrame): Historical macroeconomic data.
+        best_chain (list): Order of variable dependencies for forecasting.
+        scenario_number (int): Unique identifier for the scenario.
+    """
     descriptive_list = [variable_descriptions[code] for code in best_chain]
 
     selected_descriptions = st.multiselect("Select macroeconomic variables to compare", descriptive_list, key=f"forecast_multiselect{scenario_number}")
@@ -268,6 +418,15 @@ def display_forecast_results(original_data, best_chain, scenario_number):
         st.plotly_chart(fig, use_container_width=True, key=f"display_forecast_results_plotly_chart{scenario_number}")
 
 def user_forecast(original_data, best_chain, models, scenario_number=1):
+    """
+     Manages user interactions to generate and visualize macroeconomic forecasts.
+
+     Args:
+         original_data (pd.DataFrame): Historical macroeconomic data.
+         best_chain (list): Order of variable dependencies for forecasting.
+         models (dict): A dictionary of trained models for forecasting.
+         scenario_number (int): Unique identifier for the scenario (default is 1).
+     """
     st.header(f"User Forecast (Scenario {scenario_number})")
 
     # 1. Initialize session state for this specific scenario
@@ -310,6 +469,14 @@ def user_forecast(original_data, best_chain, models, scenario_number=1):
         display_forecast_results(original_data, best_chain, scenario_number)
 
 def user_forecast_compare(original_data, best_chain, models):
+    """
+    Allows users to create and compare multiple forecast scenarios in a Streamlit application.
+
+    Args:
+        original_data (pd.DataFrame): Historical macroeconomic data.
+        best_chain (list): Order of variable dependencies for forecasting.
+        models (dict): A dictionary of trained models for forecasting.
+    """
     if 'scenario_count' not in st.session_state:
         st.session_state.scenario_count = 1
 
