@@ -94,7 +94,7 @@ def fit_predict_model(X_train, y_train, X_test, y_test):
         objective='reg:squarederror',
         learning_rate=0.1,
         max_depth=5,
-        n_estimators=1000
+        n_estimators=10
     )
 
     logger.info(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
@@ -181,6 +181,8 @@ def save_feature_importances(model, X_train, variable, feature_importances):
         feature_importances (dict): Dictionary to store feature importance values.
     """
     importances = dict(zip(X_train.columns, model.feature_importances_))
+    # Convert numpy.float32 to native Python float
+    importances = {k: float(v) for k, v in importances.items()}
     sorted_importances = sorted(importances.items(), key=lambda x: x[1], reverse=True)[:10]
     feature_importances[variable] = dict(sorted_importances)
     logger.info(f"Top 10 feature importances for {variable}: {feature_importances[variable]}")
@@ -222,6 +224,6 @@ def train_model(best_chain, original_data):
         save_feature_importances(model, X_train, variable, feature_importances)
 
     # 6. Save all feature importances to a JSON file
-    with open('resources/models/feature_importances.json', 'w') as f:
+    with open('src/resources/models/feature_importances.json', 'w') as f:
         json.dump(feature_importances, f, indent=4)
     logger.info("Feature importances saved to resources/models/feature_importances.json.")
