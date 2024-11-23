@@ -25,4 +25,4 @@ plotly
 fredapi
 # python-dotenv
 statsmodels
-logging
+streamlit
