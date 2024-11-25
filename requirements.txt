@@ -23,6 +23,6 @@ xgboost
 streamlit
 plotly
 fredapi
-# python-dotenv
+python-dotenv
 statsmodels
 streamlit
