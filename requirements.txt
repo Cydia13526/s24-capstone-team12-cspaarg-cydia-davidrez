@@ -11,17 +11,18 @@ nltk
 scipy
 textblob
 spacy
-WordCloud
-transformers
+# WordCloud
+# transformers
 matplotlib
 seaborn
-sentencepiece
-huggingface_hub
-cryptography
-gensim
+# sentencepiece
+# huggingface_hub
+# cryptography
+# gensim
 xgboost
 streamlit
 plotly
-statsmodels
 fredapi
 python-dotenv
+statsmodels
+streamlit

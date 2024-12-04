@@ -1,22 +1,41 @@
-## SIADS Capstone - Forecasting Federal Funds Rate Movements through Natural Language Processing of FOMC Minutes
+## SIADS Capstone - Federal Funds Rate Scenario and Macroeconomic Prediction App
+
+##### Casey Spaargaren (cspaarg@umich.edu), School of Information, University of Michigan
+##### Cydia Tsang (cydia@umich.edu), School of Information, University of Michigan
+##### David Rezkalla (davidrez@umich.edu), School of Information, University of Michigan
 
 ### Description:
-###### This project leverages machine learning and natural language processing (NLP) techniques to analyze and model the relationship between the Federal Reserve's meeting minutes and the Federal Funds Rate from 1993 to 2024.
+###### This project is a Streamlit-based web application that empowers users to explore how different Federal Funds Rate scenarios could impact macroeconomic factors and the S&P 500. It allows users to define custom Fed Funds Rate scenarios, predict corresponding macroeconomic outcomes, and assess the potential influence on market performance.
 
-##### Casey Spaargaren(cspaarg@umich.edu), School of Information, University of Michigan
-##### Cydia Tsang (cydia@umich.edu), School of Information, University of Michigan
-##### David Rezkalla(davidrez@umich.edu), School of Information, University of Michigan
+### Features
+#### Scenario Customization:
+###### Users can set their own Federal Funds Rate scenarios to simulate real-world monetary policy changes.
+
+#### Predictive Modeling:
+###### The app uses predictive models to estimate how macroeconomic indicators (e.g., inflation, unemployment rate) respond to the user-defined scenarios.
+
+#### Market Impact Insights:
+###### Forecast how the S&P 500 might react based on the macroeconomic projections.
+
+#### Interactive Dashboard:
+###### A clean and intuitive interface to visualize data and predictions dynamically.
 
 ### Prerequisites:
-###### Python 3.8+
+###### Python 3.11+
 
 ### Installation:
-###### 1. git clone https://github.com/Cydia13526/s24-milestone2-team7-cspaarg-cydia-davidrez.git
+###### 1. git clone https://github.com/Cydia13526/s24-capstone-team12-cspaarg-cydia-davidrez.git
 ###### 2. git checkout develop
 ###### 3. pip install -r requirements.txt
-###### 4. jupyter notebook (For python 2)/ python3 -m notebook (For python3)
-###### 5. Inside jupyter notebook, click project.ipynb
+###### 4. streamlit run src/streamlit_app/app.py
 
 ### Run the Following Command If you failed to import XGBRegressor
 ###### /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ###### brew install libomp
+
+### File Structure
+###### app.py: Main Streamlit application file.
+###### /pages: Contains additional pages for the Streamlit multi-page app.
+###### /data: Stores any datasets or configuration files.
+###### /models: Includes trained models or scripts for prediction.
+###### /utils: Utility scripts for data processing or helper functions.
