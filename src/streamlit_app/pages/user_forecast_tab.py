@@ -25,6 +25,8 @@ Functions:
 """
 
 import sys, os
+from datetime import date
+
 import numpy as np
 import streamlit as st
 import pandas as pd
@@ -407,7 +409,7 @@ def display_forecast_results(original_data, best_chain, scenario_number):
             "Select Timeframe for Forecast Comparison",
             min_value=min_date,
             max_value=max_date,
-            value=(min_date, max_date),
+            value=(date(2023, 10, 1), max_date),
             format="YYYY-MM-DD",
             key=f"forecast_date_slide{scenario_number}"
         )
