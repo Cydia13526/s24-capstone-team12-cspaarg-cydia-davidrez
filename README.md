@@ -7,6 +7,10 @@
 ### Description:
 ###### This project is a Streamlit-based web application that empowers users to explore how different Federal Funds Rate scenarios could impact macroeconomic factors and the S&P 500. It allows users to define custom Fed Funds Rate scenarios, predict corresponding macroeconomic outcomes, and assess the potential influence on market performance.
 
+### Data Sources:
+The data used in this project is accessed through the Federal Reserve Economic Data (FRED) API, which is publicly available and free to use. The API provides economic data and analysis tools maintained by the Federal Reserve Bank of St. Louis. Users can obtain their own FRED API key by visiting the FRED API Key Registration Page and following the instructions for creating a free account.
+
+
 ### Features
 #### Scenario Customization:
 ###### Users can set their own Federal Funds Rate scenarios to simulate real-world monetary policy changes.
