@@ -80,6 +80,9 @@ def evaluate_variable(data: pd.DataFrame, predictive_chain: List[str], column: s
     })
 
 
+
+
+# This function was done with the help of ChatGPT. It specifically gave the guidance on how to correctly implement the predictive chain with no errors.
 def find_best_chain(predictive_chain: List[str], data: pd.DataFrame, max_vars: int = None, pval_threshold: float = 0.10):
     """
     Find the optimal chain of predictive variables by iteratively adding significant variables.

@@ -23,7 +23,8 @@ import sys, os
 import pickle
 import pandas as pd
 import xgboost as xgb
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
 sys.path.append(os.path.join(os.getcwd(), 'src'))
 from streamlit_app.data.mongo_data_loader import MongoDataLoader
 from streamlit_app.configs.logger_config import logger
@@ -88,32 +89,31 @@ def fit_predict_model(X_train, y_train, X_test, y_test):
         y_test (pd.Series): Testing target variable.
 
     Returns:
-        tuple: Trained XGBoost model and predictions for the test set.
+        tuple: Trained XGBoost model, predictions for the test set, and MAE over time.
     """
     model = xgb.XGBRegressor(
         objective='reg:squarederror',
         learning_rate=0.1,
         max_depth=5,
-        n_estimators=10
+        n_estimators=1
     )
 
-    logger.info(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
-    logger.info(f"X_test shape: {X_test.shape}, y_test shape: {y_test.shape}")
-    logger.info(f"X_train index range: {X_train.index.min()} to {X_train.index.max()}")
-    logger.info(f"X_test index range: {X_test.index.min()} to {X_test.index.max()}")
-    logger.info(f"features: {X_train.columns}")
-
     predictions = []
+    mae_over_time = []  # To store MAE over time
+
     for i in range(len(X_test)):
         model.fit(X_train, y_train)
         pred = model.predict(X_test.iloc[i:i+1])
         predictions.append(pred[0])
 
+        # Calculate MAE for the current prediction
+        current_mae = mean_absolute_error(y_test.iloc[:i+1], predictions)
+        mae_over_time.append(current_mae)
+
         X_train = pd.concat([X_train, X_test.iloc[i:i+1]])
         y_train = pd.concat([y_train, pd.Series(y_test.iloc[i], index=[X_test.index[i]])])
 
-    logger.info(f"Model training completed for variable with final train shape: {X_train.shape}")
-    return model, predictions
+    return model, predictions, mae_over_time
 
 
 def reconstruct_actuals(original_data, variable, train_size, predictions, X_test):
@@ -141,18 +141,28 @@ def reconstruct_actuals(original_data, variable, train_size, predictions, X_test
     logger.info(f"Actual values reconstructed for {variable}.")
     return real_predictions
 
-def save_predictions_to_db(variable, real_predictions):
+def save_predictions_to_db(variable, real_predictions, mae_over_time):
     """
-    Saves reconstructed predictions to a MongoDB database.
+    Saves reconstructed predictions and MAE values to a MongoDB database.
 
     Args:
         variable (str): Target variable for prediction.
         real_predictions (dict): Reconstructed predictions.
+        mae_over_time (list): MAE values over time.
     """
     try:
+        # Convert predictions and MAE to a format suitable for database storage
+        data_to_save = {
+            date: {
+                f'{variable}_prediction': pred_value,
+                'mae_over_time': mae_value
+            }
+            for (date, pred_value), mae_value in zip(real_predictions.items(), mae_over_time)
+        }
+        
         with MongoDataLoader(os.path.join(os.getcwd(), "src/resources/data/mongo_db/predictions_macro.db")) as loader:
-            loader.insert_predictions_data(variable, real_predictions)
-        logger.info(f"Predictions for {variable} saved to database.")
+            loader.insert_predictions_data(variable, data_to_save)
+        logger.info(f"Predictions and MAE values for {variable} saved to database.")
     except Exception as e:
         logger.error(f"Failed to save predictions for {variable}: {e}")
 
@@ -187,6 +197,25 @@ def save_feature_importances(model, X_train, variable, feature_importances):
     feature_importances[variable] = dict(sorted_importances)
     logger.info(f"Top 10 feature importances for {variable}: {feature_importances[variable]}")
 
+def calculate_metrics(y_true, y_pred):
+    """
+    Calculate various performance metrics for model evaluation.
+
+    Args:
+        y_true (array-like): Actual values
+        y_pred (array-like): Predicted values
+
+    Returns:
+        dict: Dictionary containing various performance metrics
+    """
+    metrics = {
+        'RMSE': np.sqrt(mean_squared_error(y_true, y_pred)),
+        'MAE': mean_absolute_error(y_true, y_pred),
+        'R2': r2_score(y_true, y_pred),
+        'MAPE': np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    }
+    return metrics
+
 def train_model(best_chain, original_data):
     """
     Executes the end-to-end training process for variables in the causal chain.
@@ -201,6 +230,7 @@ def train_model(best_chain, original_data):
         - Feature importances as a JSON file.
     """
     feature_importances = {}
+    model_metrics = {}
 
     for variable in best_chain[1:]:
         logger.info(f"Starting model training for {variable}")
@@ -209,7 +239,7 @@ def train_model(best_chain, original_data):
         X_train, X_test, y_train, y_test = prepare_data(original_data, best_chain, variable)
 
         # 2. Fit model and make predictions
-        model, predictions = fit_predict_model(X_train, y_train, X_test, y_test)
+        model, predictions, mae_over_time = fit_predict_model(X_train, y_train, X_test, y_test)
 
         # 3. Calculate and log Mean Absolute Error
         mae_test = mean_absolute_error(y_test, predictions)
@@ -219,11 +249,25 @@ def train_model(best_chain, original_data):
         real_predictions = reconstruct_actuals(original_data, variable, len(X_train), predictions, X_test)
 
         # 5. Save predictions, model, and feature importances
-        save_predictions_to_db(variable, real_predictions)
+        save_predictions_to_db(variable, real_predictions, mae_over_time)
         save_model(model, variable)
         save_feature_importances(model, X_train, variable, feature_importances)
 
-    # 6. Save all feature importances to a JSON file
+        # Calculate metrics
+        diff_metrics = calculate_metrics(y_test, predictions)
+        actual_values = original_data[variable].loc[X_test.index]
+        pred_values = pd.Series(real_predictions).loc[X_test.index]
+        actual_metrics = calculate_metrics(actual_values, pred_values)
+        
+        model_metrics[variable] = {
+            'differenced': diff_metrics,
+            'actual': actual_metrics
+        }
+
+    # Save feature importances and metrics
     with open('src/resources/models/feature_importances.json', 'w') as f:
         json.dump(feature_importances, f, indent=4)
-    logger.info("Feature importances saved to resources/models/feature_importances.json.")
+    
+    with open('src/resources/models/model_metrics.json', 'w') as f:
+        json.dump(model_metrics, f, indent=4)
+
