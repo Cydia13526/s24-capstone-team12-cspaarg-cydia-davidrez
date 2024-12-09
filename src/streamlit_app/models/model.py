@@ -95,7 +95,7 @@ def fit_predict_model(X_train, y_train, X_test, y_test):
         objective='reg:squarederror',
         learning_rate=0.1,
         max_depth=5,
-        n_estimators=10
+        n_estimators=1
     )
 
     predictions = []
@@ -159,7 +159,7 @@ def save_predictions_to_db(variable, real_predictions, mae_over_time):
             }
             for (date, pred_value), mae_value in zip(real_predictions.items(), mae_over_time)
         }
-        
+
         with MongoDataLoader(os.path.join(os.getcwd(), "src/resources/data/mongo_db/predictions_macro.db")) as loader:
             loader.insert_predictions_data(variable, data_to_save)
         logger.info(f"Predictions and MAE values for {variable} saved to database.")
@@ -258,7 +258,7 @@ def train_model(best_chain, original_data):
         actual_values = original_data[variable].loc[X_test.index]
         pred_values = pd.Series(real_predictions).loc[X_test.index]
         actual_metrics = calculate_metrics(actual_values, pred_values)
-        
+
         model_metrics[variable] = {
             'differenced': diff_metrics,
             'actual': actual_metrics
@@ -267,6 +267,7 @@ def train_model(best_chain, original_data):
     # Save feature importances and metrics
     with open('src/resources/models/feature_importances.json', 'w') as f:
         json.dump(feature_importances, f, indent=4)
-    
+
     with open('src/resources/models/model_metrics.json', 'w') as f:
         json.dump(model_metrics, f, indent=4)
+
